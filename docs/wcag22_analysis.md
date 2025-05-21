@@ -86,7 +86,7 @@ Success criteria are organized into three levels of conformance:
   - Ensure complex images have extended descriptions when needed
 
 ### 3.2 1.4.3 Contrast (Minimum) (Level AA)
-- **Requirement**:
+- **Requirement**: 
   - Normal text: Contrast ratio of at least 4.5:1
   - Large text (18pt or 14pt bold): Contrast ratio of at least 3:1
   - UI components and graphical objects: Contrast ratio of at least 3:1
@@ -154,17 +154,17 @@ def check_input_purpose(html_content):
     inputs = soup.find_all(['input', 'select', 'textarea'])
     user_info_fields = ['name', 'email', 'tel', 'address', 'cc-number']
     issues = []
-
+    
     for input_field in inputs:
         field_type = input_field.get('type', '')
         field_name = input_field.get('name', '').lower()
         field_id = input_field.get('id', '').lower()
-
+        
         # Check if field is likely collecting user information
         if any(info in field_name or info in field_id for info in user_info_fields):
             if not input_field.has_attr('autocomplete'):
                 issues.append(f"Input field likely collecting user information missing autocomplete attribute: {input_field}")
-
+    
     return issues
 ```
 
@@ -182,29 +182,29 @@ When a component receives keyboard focus, it must not be entirely hidden by auth
 ```python
 def check_focus_not_obscured(driver, url):
     driver.get(url)
-    focusable_elements = driver.find_elements(By.CSS_SELECTOR,
+    focusable_elements = driver.find_elements(By.CSS_SELECTOR, 
                                              'a, button, input, select, textarea, [tabindex]')
     issues = []
-
+    
     for element in focusable_elements:
         # Skip elements not in the viewport
         if not is_in_viewport(driver, element):
             continue
-
+            
         # Focus the element
         element.send_keys(Keys.NULL)
-
+        
         # Check if the element is completely obscured
         is_visible = driver.execute_script('''
             const elem = arguments[0];
             const rect = elem.getBoundingClientRect();
-
+            
             // Check if the element is completely obscured by fixed position elements
             const obscuringElements = document.elementsFromPoint(
-                rect.left + rect.width/2,
+                rect.left + rect.width/2, 
                 rect.top + rect.height/2
             );
-
+            
             // If the first element isn't our target element, check if it's fixed/sticky
             if (obscuringElements[0] !== elem) {
                 const style = window.getComputedStyle(obscuringElements[0]);
@@ -212,13 +212,13 @@ def check_focus_not_obscured(driver, url):
                     return false;
                 }
             }
-
+            
             return true;
         ''', element)
-
+        
         if not is_visible:
             issues.append(f"Element obscured when focused: {element.tag_name} - {element.text}")
-
+    
     return issues
 ```
 
@@ -237,54 +237,54 @@ Information previously entered by the user that is required again must be either
 def check_redundant_entry(driver, url):
     driver.get(url)
     issues = []
-
+    
     # Find multi-page forms
     forms = driver.find_elements(By.TAG_NAME, 'form')
-
+    
     for form in forms:
         # Check for next page/continue buttons
-        next_buttons = form.find_elements(By.XPATH,
+        next_buttons = form.find_elements(By.XPATH, 
                                           ".//button[contains(text(), 'Next') or contains(text(), 'Continue')]")
-
+        
         if not next_buttons:
             continue
-
+            
         # Track all input fields on first page
         first_page_inputs = {}
         inputs = form.find_elements(By.TAG_NAME, 'input')
-
+        
         for input_field in inputs:
             field_name = input_field.get_attribute('name')
             field_id = input_field.get_attribute('id')
             field_label = get_field_label(driver, input_field)
-
+            
             if field_name or field_id:
                 first_page_inputs[field_name or field_id] = {
                     'element': input_field,
                     'label': field_label
                 }
-
+        
         # Go to next page
         next_buttons[0].click()
         WebDriverWait(driver, 10).until(EC.staleness_of(next_buttons[0]))
-
+        
         # Check for redundant fields on second page
         second_page_inputs = form.find_elements(By.TAG_NAME, 'input')
-
+        
         for input_field in second_page_inputs:
             field_name = input_field.get_attribute('name')
             field_id = input_field.get_attribute('id')
             field_label = get_field_label(driver, input_field)
-
+            
             # Check if this field exists on first page
             if field_name in first_page_inputs or field_id in first_page_inputs:
                 # Check if field is auto-populated
                 value = input_field.get_attribute('value')
                 has_autocomplete = input_field.get_attribute('autocomplete') != 'off'
-
+                
                 if not value and not has_autocomplete:
                     issues.append(f"Redundant entry required for field: {field_label or field_name or field_id}")
-
+    
     return issues
 ```
 
@@ -303,39 +303,39 @@ Status messages must be programmatically determinable through role or properties
 def check_status_messages(driver, url):
     driver.get(url)
     issues = []
-
+    
     # Find forms to trigger status messages
     forms = driver.find_elements(By.TAG_NAME, 'form')
-
+    
     for form in forms:
         # Submit the form to potentially trigger status messages
         submit_buttons = form.find_elements(By.CSS_SELECTOR, 'button[type="submit"], input[type="submit"]')
-
+        
         if not submit_buttons:
             continue
-
+            
         # Record DOM state before submission
         dom_before = driver.execute_script('return document.documentElement.outerHTML')
-
+        
         # Submit the form
         submit_buttons[0].click()
-
+        
         # Wait for potential status messages
         time.sleep(2)
-
+        
         # Find all new elements that appeared after submission
         new_elements = driver.execute_script('''
             const domBefore = arguments[0];
             const parser = new DOMParser();
             const docBefore = parser.parseFromString(domBefore, 'text/html');
-
+            
             // Get all current elements that might be status messages
             const currentElements = Array.from(document.querySelectorAll('.status, .message, .alert, .notification'));
-
+            
             // Filter to only elements that weren't present before
             return currentElements.filter(el => {
                 // Check if this element or similar existed before
-                const selector = el.tagName + (el.id ? '#' + el.id : '') +
+                const selector = el.tagName + (el.id ? '#' + el.id : '') + 
                                 (el.className ? '.' + el.className.split(' ').join('.') : '');
                 return !docBefore.querySelector(selector);
             }).map(el => ({
@@ -344,15 +344,15 @@ def check_status_messages(driver, url):
                 ariaLive: el.getAttribute('aria-live')
             }));
         ''', dom_before)
-
+        
         for element in new_elements:
             # Check if the element has appropriate ARIA roles/attributes
             has_proper_role = element['role'] in ['status', 'alert', 'log', 'progressbar']
             has_aria_live = element['ariaLive'] in ['polite', 'assertive']
-
+            
             if not has_proper_role and not has_aria_live:
                 issues.append(f"Status message without proper ARIA role or live region: {element['outerHTML']}")
-
+    
     return issues
 ```
 
